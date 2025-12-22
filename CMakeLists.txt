@@ -134,8 +134,9 @@ target_compile_options(pico_fido PUBLIC
 
 if(CUST_BUTTON_PIN)
     target_compile_definitions(pico_fido PUBLIC CUST_BUTTON_PIN=${CUST_BUTTON_PIN})
+    message(STATUS "CUST_BUTTON_PIN is set to: ${CUST_BUTTON_PIN}")
 endif()
-message(STATUS "CUST_BUTTON_PIN is set to: ${CUST_BUTTON_PIN}")
+
 
 string(FIND ${CMAKE_C_COMPILER} ":" COMPILER_COLON)
 if (${COMPILER_COLON} GREATER_EQUAL 0)
