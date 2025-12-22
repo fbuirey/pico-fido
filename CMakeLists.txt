@@ -115,10 +115,16 @@ endif()
 SET_VERSION(ver_major ver_minor "${CMAKE_CURRENT_LIST_DIR}/src/fido/version.h" 2)
 if(ESP_PLATFORM)
     project(pico_fido)
+    if(CUST_BUTTON_PIN)
+        add_definitions(-DCUST_BUTTON_PIN=${CUST_BUTTON_PIN})
+        message(STATUS "CUST_BUTTON_PIN is set to: ${CUST_BUTTON_PIN}")
+    endif()    
 endif()
+
 set(INCLUDES ${INCLUDES}
         ${CMAKE_CURRENT_LIST_DIR}/src/fido
         )
+
 if(NOT ESP_PLATFORM)
 target_sources(pico_fido PUBLIC ${SOURCES})
 target_include_directories(pico_fido PUBLIC ${INCLUDES})
@@ -130,14 +136,10 @@ if (NOT MSVC)
 target_compile_options(pico_fido PUBLIC
     -Werror
     )
-
-
 if(CUST_BUTTON_PIN)
     target_compile_definitions(pico_fido PUBLIC CUST_BUTTON_PIN=${CUST_BUTTON_PIN})
     message(STATUS "CUST_BUTTON_PIN is set to: ${CUST_BUTTON_PIN}")
 endif()
-
-
 string(FIND ${CMAKE_C_COMPILER} ":" COMPILER_COLON)
 if (${COMPILER_COLON} GREATER_EQUAL 0)
         target_compile_options(pico_fido PUBLIC

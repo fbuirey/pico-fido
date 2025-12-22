@@ -1,3 +1,5 @@
 [submodule "pico-keys-sdk"]
 	path = pico-keys-sdk
 	url = git@github.com:fbuirey/pico-keys-sdk.git
+[submodule "pico-sdk"]
+	url = https://github.com/fbuirey/pico-sdk-keys
