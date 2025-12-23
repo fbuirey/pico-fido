@@ -2,26 +2,26 @@
 """
 vendor_phy.py
 
-Exemple : envoie une commande CTAP `CTAP_CONFIG` (subcommand vendor) nécessitant
-une authentification PIN (pinUvAuthParam / PUAT). Permet de définir un paramètre
-PHY (ex. LED GPIO) ou de lire des options.
+Example: send a CTAP `CTAP_CONFIG` vendor subcommand that requires
+PIN-based authentication (pinUvAuthParam / PUAT). This script can set a PHY
+parameter (e.g. LED GPIO) or read PHY options.
 
-Dépendances :
-  python -m pip install fido2 cbor2
+Dependencies:
+    python -m pip install fido2 cbor2
 
-Usage :
-  # Lire les options PHY (exemple) -- ici on montre comment authentifier si nécessaire
-  python tools/vendor_phy.py --pin 12345678 --action read-opts
+Usage:
+    # Read PHY options (example) — demonstrates authentication when required
+    python tools/vendor_phy.py --pin 12345678 --action read-opts
 
-  # Définir la GPIO LED (exemple) à 5 (requiert PUAT)
-  python tools/vendor_phy.py --pin 12345678 --set-led-gpio 5
+    # Set LED GPIO (example) to 5 (requires PUAT)
+    python tools/vendor_phy.py --pin 12345678 --action set-led-gpio --set-led-gpio 5
 
-Ce script montre la construction du payload CBOR attendu par `src/fido/cbor_config.c` :
-  top-level map keys: 1=subcommand, 2=subpara (map), 3=pinUvAuthProtocol, 4=pinUvAuthParam
+This script demonstrates the CBOR payload expected by `src/fido/cbor_config.c`:
+    top-level map keys: 1=subcommand, 2=subpara (map), 3=pinUvAuthProtocol, 4=pinUvAuthParam
 
-Le calcul de `pinUvAuthParam` suit l'implémentation firmware :
-  verify_payload = 32 x 0xFF || 0x0D || <subcommand byte> || <raw_subpara_bytes>
-  pinUvAuthParam = HMAC-SHA256(pin_token, verify_payload)[:16]  (protocol 1)
+The computation of `pinUvAuthParam` follows the firmware implementation:
+    verify_payload = 32 x 0xFF || 0x0D || <subcommand byte> || <raw_subpara_bytes>
+    pinUvAuthParam = HMAC-SHA256(pin_token, verify_payload)[:16]  (protocol 1)
 
 """
 import argparse
@@ -48,7 +48,7 @@ CTAP_CONFIG_PHY_OPTS = 0x269f3b09eceb805f
 def find_device():
     dev = next(CtapHidDevice.list_devices(), None)
     if not dev:
-        print("Aucun périphérique FIDO/HID trouvé.")
+        print("No FIDO/HID device found.")
         return None
     return dev
 
@@ -94,7 +94,7 @@ def action_read_opts(device, client=None, pin=None):
         cbor_map = {1: SUBCMD_VENDOR, 2: nested}
 
     res = send_ctap_config(device, cbor_map)
-    print("Réponse CBOR décodée:")
+    print("Decoded CBOR response:")
     print(res)
 
 def action_set_led_gpio(device, gpio, client=None, pin=None):
@@ -102,7 +102,7 @@ def action_set_led_gpio(device, gpio, client=None, pin=None):
     raw_sub = cbor2.dumps(nested)
 
     if pin is None:
-        print("Cette commande requiert pinUvAuth (PUAT). Passez --pin ou utilisez --interactive-pin")
+        print("This command requires pinUvAuth (PUAT). Pass --pin or use --interactive-pin")
         return
 
     if client is None:
@@ -112,15 +112,15 @@ def action_set_led_gpio(device, gpio, client=None, pin=None):
     cbor_map = {1: SUBCMD_VENDOR, 2: nested, 3: protocol, 4: pinuv}
 
     res = send_ctap_config(device, cbor_map)
-    print("Réponse CBOR décodée:")
+    print("Decoded CBOR response:")
     print(res)
 
 def main():
-    parser = argparse.ArgumentParser(description="Exemple: CTAP CTAP_CONFIG vendor with PIN auth (PUAT)")
-    parser.add_argument("--pin", help="PIN (optionnel). Si non fourni et nécessaire, utilisez --interactive-pin")
-    parser.add_argument("--interactive-pin", action="store_true", help="Demander PIN en mode interactif")
+    parser = argparse.ArgumentParser(description="Example: CTAP_CONFIG vendor with PIN auth (PUAT)")
+    parser.add_argument("--pin", help="PIN (optional). If not provided and required, use --interactive-pin")
+    parser.add_argument("--interactive-pin", action="store_true", help="Prompt for PIN interactively")
     parser.add_argument("--action", choices=["read-opts", "set-led-gpio"], default="read-opts")
-    parser.add_argument("--set-led-gpio", type=int, help="Numéro GPIO à écrire (utilisé avec --action set-led-gpio)")
+    parser.add_argument("--set-led-gpio", type=int, help="GPIO number to write (used with --action set-led-gpio)")
     args = parser.parse_args()
 
     device = find_device()
@@ -138,7 +138,7 @@ def main():
         action_read_opts(device, client=client, pin=pin)
     elif args.action == "set-led-gpio":
         if args.set_led_gpio is None:
-            print("Indiquez --set-led-gpio N")
+            print("Specify --set-led-gpio N")
             sys.exit(3)
         # instantiate client when using PIN
         if pin:
