@@ -1,18 +1,19 @@
-Tools README
-===============
+# Tools README
+
+## CTAP Vendor CBOR Commnands
 
 This folder contains small utility scripts to interact with the Pico FIDO firmware using CTAP vendor CBOR commands over the HID transport.
 
-Overview
---------
+### Overview
+
 Three example scripts are provided:
 
 - `vendor_phy.py` — a full example that demonstrates how to send a CTAP `CTAP_CONFIG` vendor subcommand and includes PIN-based authentication (pinUvAuthParam / PUAT). It can be used to read PHY options and to set a single PHY field (e.g. LED GPIO).
 - `get_phy_opts.py` — a lightweight helper that reads PHY options via the vendor PHY_OPTS command and prints the decoded CBOR response. (Note: if the repository version does not include this file, use `vendor_phy.py` instead.)
 - `get_memory.py` — a lightweight helper that reads memory statistics via the vendor MEMORY command and prints the decoded CBOR response.
 
-Prerequisites
--------------
+### Prerequisites
+
 - Python 3.8+
 - Install dependencies:
 
@@ -20,8 +21,8 @@ Prerequisites
 python -m pip install fido2 cbor2
 ```
 
-How the scripts work
---------------------
+### How the scripts work
+
 - Transport: scripts use the HID transport via `python-fido2` (the `CtapHidDevice` helper) and call CTAPHID CBOR (`CTAPHID_CBOR`) or the CTAP `CTAP_CONFIG` command depending on the implementation.
 - Payload: vendor commands are encoded as CBOR maps. The firmware in this repo expects the vendor-subcommand layout inside a CTAP `CTAP_CONFIG` or a vendor-CBOR message: top-level map keys include `1` (subcommand), `2` (sub-parameters map), `3` (pinUvAuthProtocol) and `4` (pinUvAuthParam) when authentication is required.
 - Authentication (PUAT): when a vendor operation requires authorization, the script performs these steps:
@@ -29,8 +30,7 @@ How the scripts work
   2. Construct the `verify_payload` (32 bytes of 0xFF, the `CTAP_CONFIG` byte, the vendor subcommand, and the raw sub-parameter bytes) and compute an HMAC-SHA256 with the pin token.
   3. Truncate the HMAC to 16 bytes for protocol 1 and include it as `pinUvAuthParam` (map key `4`) plus the `pinUvAuthProtocol` (map key `3`).
 
-Quick usage
------------
+### Quick usage
 
 Examples (with `vendor_phy.py` which handles PIN):
 
@@ -59,30 +59,21 @@ python tools/get_phy_opts.py
 python tools/get_memory.py
 ```
 
-Notes and troubleshooting
--------------------------
+**Notes and troubleshooting**
+
 - Browser-based WebAuthn will not let you directly issue these vendor commands. To use the scripts from a web UI, run a small local native helper (like these scripts) that exposes a local HTTP API the web app can call.
 - If a command is rejected with a CBOR error indicating missing authentication, obtain the PIN and retry. Use `--interactive-pin` if you do not want to put the PIN on the command line.
 - Some vendor commands expect different sub-parameter formats (integers vs byte strings). Consult `src/fido/cbor_config.c` and `src/fido/cbor_vendor.c` for firmware-side expectations.
 - If no HID device is found, ensure the authenticator is connected as a USB device and not being grabbed by another process (browser, PC/SC middleware, etc.).
 
-Extending the scripts
----------------------
+### Extending the scripts
+
 - Add more vendorCommandId constants (VID/PID, brightness, opts) in the scripts to implement other operations.
 - Add a confirmation/readback step: after writing a PHY field, call a read vendor command (if available) to verify persistence.
 
-License
--------
-Follow the project license in the repository root (AGPL3 or the one specified by the project).
 
-Questions or next steps
-----------------------
-If you want, I can:
-- add `get_phy_opts.py` and `get_memory.py` files to the `tools/` directory if they are missing; or
-- add an APDU/CCID example (INS_READ_CONFIG / INS_WRITE_CONFIG) to read/write `EF_DEV_CONF`.
+## CBOR Command IDs and where to find them
 
-CBOR Command IDs and where to find them
---------------------------------------
 This project uses CBOR-encoded CTAP/CTAP2 messages and several vendor-defined
 command identifiers. Here is how to locate and understand those command IDs:
 
@@ -116,12 +107,78 @@ command identifiers. Here is how to locate and understand those command IDs:
     serve as practical examples of building CBOR payloads and authenticating
     with PIN tokens.
 
-If you want, I can add a short example in this README that shows how to
-construct a minimal CBOR map for a particular vendorCommandId, or add quick
-grep commands that locate every vendorCommandId usage in the repo.
 
-Adding custom vendor commands (example: LCD messages)
-----------------------------------------------------
+## APDU tools: reading/writing `EF_PHY`
+
+Two small PC/SC-based utilities (APDU/CCID) allow reading and modifying the
+`EF_PHY` blob stored in flash: `read_phy_apdu.py` and `write_phy_apdu.py`.
+
+### Dependencies
+
+- `pyscard` (package `python3-pyscard` or `pyscard`) and a running PC/SC
+  daemon (`pcscd`). On Debian/Ubuntu you can install them with:
+
+```bash
+sudo apt update
+sudo apt install -y pcscd python3-pyscard
+sudo systemctl start pcscd
+```
+
+### `read_phy_apdu.py`
+
+- Selects the firmware "rescue" AID and issues the APDU to read `PHY`
+  (CLA=`0x80`, INS=`0x1E`, P1=`0x01`).
+- Parses the returned serialized TLV blob and prints fields such as
+  `led_gpio`, `led_brightness`, `led_driver`, `PHY_OPTS` (with known flag
+  decoding), and `VID/PID` if present.
+- Example:
+
+```bash
+python3 tools/read_phy_apdu.py
+```
+
+### `write_phy_apdu.py`
+
+- Sends an APDU WRITE (CLA=`0x80`, INS=`0x1C`, P1=`0x01`) with a minimal TLV
+  payload to update a single `phy_data` field. The firmware accepts partial
+  TLVs and updates only the provided fields.
+- Supported parameters: `led_gpio`, `led_brightness`, `led_driver`, `opts`,
+  `vidpid`.
+- Convenience option `--key-type <name>` maps a named key type to a
+  VID:PID pair (mapping taken from `pico-keys-sdk/pico_keys_sdk_import.cmake`).
+  Available types include: `NitroHSM`, `NitroFIDO2`, `NitroStart`, `NitroPro`,
+  `Nitro3`, `Yubikey5`, `YubikeyNeo`, `YubiHSM`, `Gnuk`, `GnuPG`.
+- Examples:
+
+```bash
+# from the repository root
+python3 tools/write_phy_apdu.py --param led_brightness --value 4
+python3 tools/write_phy_apdu.py --key-type Yubikey5
+```
+
+### Precautions
+
+- CCID access may be held by other programs (browsers, PC/SC middleware).
+  Close applications that may claim the device before using these scripts.
+- `write_phy_apdu.py` modifies the persistent configuration (`EF_PHY`). Make
+  a backup (read/dump) before writing if you need to preserve current values.
+- If you prefer to perform changes over HID/CTAP (with proper PIN/PUAT
+  authentication), use `tools/vendor_phy.py` which demonstrates CTAP/PIN flows.
+
+### Verification
+
+- After a write with `write_phy_apdu.py`, verify persistence with:
+
+```bash
+python3 tools/read_phy_apdu.py
+```
+
+If you want, I can add a `--list-key-types` option to `write_phy_apdu.py` and a
+dedicated table in this README listing each key type and its VID/PID. Tell me
+if you want that added.
+
+## Adding custom vendor commands (example: LCD messages)
+
 You can extend the firmware with custom vendor commands (for example, to
 display text on an LCD instead of using LED blink codes). Below is a practical
 guide and recommendations.
@@ -192,5 +249,4 @@ If you want, I can generate a minimal example patch that:
   - adds a simple handler stub in `src/fido/cbor_config.c` that logs/returns
     the received text, and
   - adds a `tools/` client example that sends a test payload (PUAT optional).
-Tell me if you want that and whether you want the handler to persist the
-message to flash as part of the example.
+

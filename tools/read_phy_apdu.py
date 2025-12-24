@@ -18,12 +18,12 @@ Usage:
   python tools/read_phy_apdu.py
 
 Driver Values:
-  1 → PICO (LED board pin)
-  2 → PIMORONI
-  3 → WS2812 (adressable)
-  4 → CYW43 (si activé)
-  5 → NEOPIXEL (ESP)
-  255 (0xFF) → NONE
+    1 → PICO (LED board pin)
+    2 → PIMORONI
+    3 → WS2812 (addressable)
+    4 → CYW43 (if enabled)
+    5 → NEOPIXEL (ESP)
+    255 (0xFF) → NONE
 
 Note: If your device does not expose the CCID/rescue app, the script will
 report the responses from the reader. The management app (AID shown in logs)
@@ -35,15 +35,15 @@ try:
     from smartcard.System import readers
 except Exception as exc:
     import sys
-    sys.stderr.write("Module 'pyscard' (smartcard) introuvable.\n")
-    sys.stderr.write("Installez la dépendance et le service PC/SC puis relancez le script. Exemple (Debian/Ubuntu):\n")
+    sys.stderr.write("Module 'pyscard' (smartcard) not found.\n")
+    sys.stderr.write("Install the dependency and ensure the PC/SC service is running, then re-run this script. Example (Debian/Ubuntu):\n")
     sys.stderr.write("  sudo apt update && sudo apt install -y pcscd libpcsclite-dev build-essential python3-dev\n")
     sys.stderr.write("  python3 -m pip install pyscard\n")
-    sys.stderr.write("Ensuite démarrez le service PC/SC si nécessaire :\n")
+    sys.stderr.write("Then start the PC/SC service if needed:\n")
     sys.stderr.write("  sudo systemctl start pcscd\n")
-    sys.stderr.write("Vérifiez la disponibilité des lecteurs :\n")
+    sys.stderr.write("Check available readers with:\n")
     sys.stderr.write("  pcsc_scan\n")
-    sys.stderr.write("Ou installez le paquet précompilé si disponible :\n")
+    sys.stderr.write("Or install the prepackaged Python binding if available:\n")
     sys.stderr.write("  sudo apt install -y python3-pyscard\n")
     sys.exit(1)
 

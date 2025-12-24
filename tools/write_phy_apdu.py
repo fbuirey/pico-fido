@@ -95,9 +95,37 @@ def write_phy(conn, tlv_bytes):
 
 def main():
     parser = argparse.ArgumentParser(description='Write PHY field via APDU (rescue app)')
-    parser.add_argument('--param', required=True, choices=['led_gpio','led_brightness','led_driver','opts','vidpid'], help='Parameter to set')
-    parser.add_argument('--value', required=True, help='Value to set (use 0x... for hex). For vidpid use VID:PID')
+    parser.add_argument('--param', required=False, choices=['led_gpio','led_brightness','led_driver','opts','vidpid'], help='Parameter to set')
+    parser.add_argument('--value', required=False, help='Value to set (use 0x... for hex). For vidpid use VID:PID')
+    parser.add_argument('--key-type', required=False, help='Named key type to set VID/PID from known platforms (overrides --param/--value when set)')
     args = parser.parse_args()
+
+    # Known key-type -> VID:PID mapping (from pico-keys-sdk/pico_keys_sdk_import.cmake)
+    KEYTYPE_VIDPID = {
+        'NitroHSM': (0x20A0, 0x4230),
+        'NitroFIDO2': (0x20A0, 0x42B1),
+        'NitroStart': (0x20A0, 0x4211),
+        'NitroPro': (0x20A0, 0x4108),
+        'Nitro3': (0x20A0, 0x42B2),
+        'Yubikey5': (0x1050, 0x0407),
+        'YubikeyNeo': (0x1050, 0x0116),
+        'YubiHSM': (0x1050, 0x0030),
+        'Gnuk': (0x234B, 0x0000),
+        'GnuPG': (0x1209, 0x2440),
+    }
+
+    # If user provided key-type, use it to set vidpid
+    if args.key_type:
+        kt = args.key_type
+        if kt not in KEYTYPE_VIDPID:
+            print('Unknown --key-type. Available types:', ', '.join(sorted(KEYTYPE_VIDPID.keys())))
+            sys.exit(5)
+        vid, pid = KEYTYPE_VIDPID[kt]
+        args.param = 'vidpid'
+        args.value = f'0x{vid:04x}:0x{pid:04x}'
+
+    if not args.param or not args.value:
+        parser.error("You must provide --param and --value, or --key-type to set VID/PID from known platforms")
 
     rdr = find_reader()
     if not rdr:
